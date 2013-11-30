@@ -10,11 +10,10 @@
  * @copyright	http://unlicense.org/
  */
 
-use Closure;
 use InvalidArgumentException;
-use System\Response;
-use System\Router;
-use System\View;
+use Response;
+use View;
+use Closure;
 
 class Route {
 
@@ -65,30 +64,11 @@ class Route {
 		}
 
 		// add collection actions
-		if(count(static::$collection)) {
-			$arguments = array_merge($arguments, end(static::$collection));
-		}
+		$arguments = array_merge($arguments, static::$collection);
 
-		if( ! is_array($patterns)) {
-			$patterns = array($patterns);
-		}
-
-		foreach($patterns as $pattern) {
+		foreach((array) $patterns as $pattern) {
 			Router::$routes[$method][$pattern] = $arguments;
 		}
-	}
-
-	/**
-	 * Register the 404 not found callback
-	 *
-	 * @param closure
-	 */
-	public static function not_found($callbacks) {
-		if($callbacks instanceof Closure) {
-			$callbacks = array('main' => $callbacks);
-		}
-
-		Router::$not_found = $callbacks;
 	}
 
 	/**
@@ -109,13 +89,13 @@ class Route {
 	 */
 	public static function collection($actions, $definitions) {
 		// start collection
-		static::$collection[] = $actions;
+		static::$collection = $actions;
 
 		// run definitions
 		call_user_func($definitions);
 
 		// end of collection
-		array_pop(static::$collection);
+		static::$collection = array();
 	}
 
 	/**
@@ -133,33 +113,28 @@ class Route {
 	 * Calls before actions
 	 *
 	 * @return object
-	 * @return object|null
 	 */
 	public function before() {
-		return $this->callback('before');
+		if( ! isset($this->callbacks['before'])) return;
+
+		foreach(explode(',', $this->callbacks['before']) as $action) {
+			// return the first response object
+			if($response = call_user_func_array(Router::$actions[$action], $this->args)) {
+				return $response;
+			}
+		}
 	}
 
 	/**
 	 * Calls after actions
 	 *
 	 * @param string
-	 * @return object|null
 	 */
 	public function after($response) {
-		return $this->callback('after', array($response));
-	}
+		if( ! isset($this->callbacks['after'])) return;
 
-	/**
-	 * Run actions
-	 *
-	 * @param string
-	 * @return object|null
-	 */
-	public function callback($name, $args = array()) {
-		if(isset($this->callbacks[$name])) {
-			foreach(explode(',', $this->callbacks[$name]) as $action) {
-				return call_user_func_array(Router::$actions[$action], $args);
-			}
+		foreach(explode(',', $this->callbacks['after']) as $action) {
+			call_user_func(Router::$actions[$action], $response);
 		}
 	}
 
@@ -180,25 +155,17 @@ class Route {
 		// Call any after actions
 		$this->after($response);
 
+		// If the response was a view get the output and create response
+		if($response instanceof View) {
+			return Response::create($response->yields());
+		}
+
 		// If we have a response object return it
 		if($response instanceof Response) {
 			return $response;
 		}
 
-		// If the response was a view get the output and create response
-		if($response instanceof View) {
-			$response = $response->render();
-		}
-		// Invoke object tostring method
-		elseif(is_object($response) and method_exists($response, '__toString')) {
-			$response = (string) $response;
-		}
-		// capture any echo'd output
-		elseif(ob_get_length()) {
-			$response = ob_get_clean();
-		}
-
-		return Response::create($response);
+		return Response::create((string) $response);
 	}
 
 }

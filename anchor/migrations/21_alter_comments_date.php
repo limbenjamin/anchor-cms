@@ -1,9 +1,9 @@
 <?php
 
-class Migration_alter_comments_date extends Migrations\Migration {
+class Migration_alter_comments_date extends Migration {
 
 	public function up() {
-		$table = $this->prefix('comments');
+		$table = Base::table('comments');
 
 		if($this->has_table($table)) {
 			$sql = 'ALTER TABLE `' . $table . '` CHANGE `date` `date` datetime NOT NULL AFTER `status`';

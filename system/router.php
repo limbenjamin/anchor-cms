@@ -10,6 +10,10 @@
  * @copyright	http://unlicense.org/
  */
 
+use FilesystemIterator;
+use ErrorException;
+use InvalidArgumentException;
+
 class Router {
 
 	/**
@@ -53,18 +57,20 @@ class Router {
 	public static $actions = array();
 
 	/**
-	 * Actions to call on not matched routes
-	 *
-	 * @var array|closure
-	 */
-	public static $not_found;
-
-	/**
 	 * Create a new instance of the Router class for chaining
 	 *
 	 * @return object
 	 */
 	public static function create() {
+		if(Request::cli()) {
+			// get cli arguments
+			$args = Arr::get($_SERVER, 'argv', array());
+
+			$uri = implode('/', array_slice($args, 1));
+
+			return new static('cli', trim($uri, '/') ?: '/');
+		}
+
 		return new static(Request::method(), Uri::current());
 	}
 
@@ -130,10 +136,11 @@ class Router {
 			}
 		}
 
-		// call 404 handler
-		if(is_array(static::$not_found)) return new Route(static::$not_found);
+		if(isset(static::$routes['ERROR']['404'])) {
+			return new Route(static::$routes['ERROR']['404']);
+		}
 
-		throw new Router\Exception('No routes matched');
+		throw new ErrorException('No routes matched');
 	}
 
 	/**

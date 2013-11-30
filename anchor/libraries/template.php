@@ -2,26 +2,27 @@
 
 class Template extends View {
 
-	public static function create($template, $vars = array()) {
-		return new static($template, $vars);
-	}
-
 	public function __construct($template, $vars = array()) {
-		$this->base = PATH . 'themes' . DS . Config::meta('theme') . DS;
-		$this->path = $this->base . $template . EXT;
+		// base path
+		$base = PATH . 'themes' . DS . Config::meta('theme') . DS;
+
+		// custom article and page templates
+		if($template == 'page' or $template == 'article') {
+			if($item = Registry::get($template)) {
+				if(is_readable($base . $template . '-' . $item->slug . EXT)) {
+					$template .= '-' . $item->slug;
+				} elseif (is_readable($base . $template . 's/' . $template . '-' . $item->slug . EXT)) {
+					$template .= 's/' . $template . '-' . $item->slug;
+				}
+			}
+		}
+
+		$this->path = $base . $template . EXT;
 		$this->vars = array_merge($this->vars, $vars);
 	}
 
-	public function set($template) {
-		$this->path = $this->base . $template . EXT;
-	}
-
-	public function get($template) {
-		return $this->path;
-	}
-
-	public function exists($template) {
-		return is_readable($this->base . $template . EXT);
+	public function __toString() {
+		return $this->yields();
 	}
 
 }

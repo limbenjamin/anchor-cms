@@ -1,9 +1,9 @@
 <?php
 
-class Migration_create_categories_table extends Migrations\Migration {
+class Migration_create_categories_table extends Migration {
 
 	public function up() {
-		$table = $this->prefix('categories');
+		$table = Base::table('categories');
 
 		if( ! $this->has_table($table)) {
 			$sql = 'CREATE TABLE IF NOT EXISTS `' . $table . '` (
@@ -14,7 +14,7 @@ class Migration_create_categories_table extends Migrations\Migration {
 				PRIMARY KEY (`id`)
 			) ENGINE=InnoDB';
 
-			DB::ask($sql);
+			DB::query($sql);
 		}
 	}
 

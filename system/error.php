@@ -10,103 +10,60 @@
  * @copyright	http://unlicense.org/
  */
 
-use Closure;
-use Exception;
 use ErrorException;
 
 class Error {
 
 	/**
-	 * Holds function to logger
-	 *
-	 * @var mixed
-	 */
-	protected $logger;
-
-	/**
-	 * Exception output handler
-	 *
-	 * @var object
-	 */
-	protected $handler;
-
-	/**
-	 * Holds callback for reporting
-	 *
-	 * @var callable
-	 */
-	public static $callback;
-
-	/**
-	 * Setup error handler
-	 */
-	public static function setup(Closure $callback) {
-		$callback(new static);
-	}
-
-	/**
-	 * Set exception logger callback
-	 *
-	 * @param mixed
-	 */
-	public function logger($logger) {
-		$this->logger = $logger;
-	}
-
-	/**
-	 * Register callback
-	 */
-	public static function callback($callback) {
-		static::$callback = $callback;
-	}
-
-	/**
-	 * Register Exception handler
-	 */
-	public function register() {
-		set_exception_handler(array($this, 'exception'));
-		set_error_handler(array($this, 'native'));
-		register_shutdown_function(array($this, 'shutdown'));
-	}
-
-	/**
-	 * Unregister Exception handler
-	 */
-	public function unregister() {
-		restore_exception_handler();
-		restore_error_handler();
-	}
-
-	/**
 	 * Exception handler
 	 *
-	 * @param object
+	 * This will log the exception and output the exception properties
+	 * formatted as html or a 500 response depending on your application config
+	 *
+	 * @param object The uncaught exception
 	 */
-	public function exception(Exception $e) {
-		$this->log($e);
+	public static function exception($e) {
+		static::log($e);
 
 		if(Config::error('report')) {
-			// try and clear any previous output
-			ob_get_level() and ob_end_clean();
+			// clear output buffer
+			while(ob_get_level() > 1) ob_end_clean();
 
-			// generate the output
-			if(defined('STDIN')) {
-				$handler = new Error\Handlers\Cli($e);
-			}
-			elseif(isset($_SERVER['HTTP_X_REQUESTED_WITH']) and strcasecmp($_SERVER['HTTP_X_REQUESTED_WITH'], 'xmlhttprequest') == 0) {
-				$handler = new Error\Handlers\Json($e);
+			if(Request::cli()) {
+				Cli::write(PHP_EOL . 'Uncaught Exception', 'light_red');
+				Cli::write($e->getMessage() . PHP_EOL);
+
+				Cli::write('Origin', 'light_red');
+				Cli::write(substr($e->getFile(), strlen(PATH)) . ' on line ' . $e->getLine() . PHP_EOL);
+
+				Cli::write('Trace', 'light_red');
+				Cli::write($e->getTraceAsString() . PHP_EOL);
 			}
 			else {
-				$handler = new Error\Handlers\Candy($e);
+				echo '<html>
+					<head>
+						<title>Uncaught Exception</title>
+						<style>
+							body{font-family:"Open Sans",arial,sans-serif;background:#FFF;color:#333;margin:2em}
+							code{background:#D1E751;border-radius:4px;padding:2px 6px}
+						</style>
+					</head>
+					<body>
+						<h1>Uncaught Exception</h1>
+						<p><code>' . $e->getMessage() . '</code></p>
+						<h3>Origin</h3>
+						<p><code>' . substr($e->getFile(), strlen(PATH)) . ' on line ' . $e->getLine() . '</code></p>
+						<h3>Trace</h3>
+						<pre>' . $e->getTraceAsString() . '</pre>
+					</body>
+					</html>';
 			}
-
-			$handler->response();
 		}
-		elseif(static::$callback instanceof Closure) {
-			call_user_func(static::$callback);
+		else {
+			// issue a 500 response
+			Response::error(500, array('exception' => $e))->send();
 		}
 
-		// exit with a error code
 		exit(1);
 	}
 
@@ -122,10 +79,8 @@ class Error {
 	 * @param int
 	 * @param array
 	 */
-	public function native($code, $message, $file, $line) {
-		if($code & error_reporting()) {
-			$this->exception(new ErrorException($message, $code, 0, $file, $line));
-		}
+	public static function native($code, $message, $file, $line, $context) {
+		static::exception(new ErrorException($message, $code, 0, $file, $line));
 	}
 
 	/**
@@ -134,11 +89,11 @@ class Error {
 	 * This will catch errors that are generated at the
 	 * shutdown level of execution
 	 */
-	public function shutdown() {
+	public static function shutdown() {
 		if($error = error_get_last()) {
 			extract($error);
 
-			$this->native($type, $message, $file, $line);
+			static::exception(new ErrorException($message, $type, 0, $file, $line));
 		}
 	}
 
@@ -147,11 +102,11 @@ class Error {
 	 *
 	 * Log the exception depending on the application config
 	 *
-	 * @param object
+	 * @param object The exception
 	 */
-	public function log(Exception $e) {
-		if(is_callable($this->logger)) {
-			call_user_func($this->logger, $e);
+	public static function log($e) {
+		if(is_callable($logger = Config::error('log'))) {
+			call_user_func($logger, $e);
 		}
 	}
 

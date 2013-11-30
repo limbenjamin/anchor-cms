@@ -4,32 +4,15 @@
  * Admin actions
  */
 Route::action('auth', function() {
-	if(Auth::guest()) {
-		if(Request::ajax()) {
-			return Response::json(array(
-				'result' => false,
-				'messages' => array('Please login')
-			));
-		}
-		return Response::redirect('admin/login');
-	}
+	if(Auth::guest()) return Response::redirect('admin/login');
 });
 
 Route::action('guest', function() {
-	if(Auth::user()) {
-		return Response::redirect('admin/posts');
-	}
+	if(Auth::user()) return Response::redirect('admin/posts');
 });
 
 Route::action('csrf', function() {
 	if( ! Csrf::check(Input::get('token'))) {
-		if(Request::ajax()) {
-			return Response::json(array(
-				'result' => false,
-				'messages' => array('Invalid token')
-			));
-		}
-
 		Notify::error(array('Invalid token'));
 
 		return Response::redirect('admin/login');
@@ -40,10 +23,7 @@ Route::action('csrf', function() {
  * Admin routing
  */
 Route::get('admin', function() {
-	if(Auth::guest()) {
-		return Response::redirect('admin/login');
-	}
-
+	if(Auth::guest()) return Response::redirect('admin/login');
 	return Response::redirect('admin/posts');
 });
 
@@ -69,8 +49,7 @@ Route::post('admin/login', array('before' => 'csrf', 'main' => function() {
 	}
 
 	// check for updates
-	$updates = new Updates;
-	$updates->check_version();
+	Update::version();
 
 	if(version_compare(Config::get('meta.update_version'), VERSION, '>')) {
 		return Response::redirect('admin/upgrade');
@@ -182,9 +161,7 @@ Route::post('admin/reset/(:any)', array('before' => 'csrf', 'main' => function($
 		return Response::redirect('admin/reset/' . $key);
 	}
 
-	User::update($user, array(
-		'password' => password_hash($password, PASSWORD_BCRYPT)
-	));
+	User::update($user, array('password' => Hash::make($password)));
 
 	Session::erase('user');
 	Session::erase('token');
@@ -220,14 +197,13 @@ Route::get('admin/extend', array('before' => 'auth', 'main' => function($page = 
 	$vars['token'] = Csrf::token();
 
 	return View::create('extend/index', $vars)
-		->partial('nav', 'extend/nav')
 		->partial('header', 'partials/header')
 		->partial('footer', 'partials/footer');
 }));
 
 /*
- * 404 not found
- */
-Route::not_found(function() {
+	404 error
+*/
+Route::error('404', function() {
 	return Response::error(404);
 });

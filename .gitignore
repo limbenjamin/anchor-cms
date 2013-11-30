@@ -4,8 +4,6 @@ Thumbs.db
 *.esproj
 *.log
 *.gz
-composer.phar
-composer.lock
 
 # env
 /anchor/config/dev
@@ -13,6 +11,7 @@ composer.lock
 # generated config
 /anchor/config/app.php
 /anchor/config/db.php
+/anchor/config/session.php
 
 # user mod_rewrite
 /.htaccess
@@ -27,7 +26,6 @@ composer.lock
 
 # plugins
 /plugins/*
-!/plugins/index.php
 
 # phpunit tests
 /tests

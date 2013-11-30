@@ -55,16 +55,8 @@ function relative_time($date) {
 	}
 }
 
-function calculate_background() {
-	static $t = 0, $i = 0;
-
-	if($t == 0) $t = posts_per_page();
-
-	return sprintf('background: hsl(215, 28%%, %d%%);', round(((++$i / $t) * 20) + 20));
-}
-
 function twitter_account() {
-	return site_meta('twitter', false);
+	return site_meta('twitter', 'idiot');
 }
 
 function twitter_url() {

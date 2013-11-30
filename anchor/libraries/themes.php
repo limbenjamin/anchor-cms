@@ -4,7 +4,7 @@ class Themes {
 
 	public static function all() {
 		$themes = array();
-		$fi = new Filesystem(PATH . 'themes', Filesystem::SKIP_DOTS);
+		$fi = new FilesystemIterator(PATH . 'themes', FilesystemIterator::SKIP_DOTS);
 
 		foreach($fi as $file) {
 			if($file->isDir()) {
@@ -30,7 +30,7 @@ class Themes {
 
 		// read file into a array
 		$contents = explode("\n", trim(file_get_contents($file)));
-		$about = array('slug' => $theme);
+		$about = array();
 
 		foreach(array('name', 'description', 'author', 'site', 'license') as $index => $key) {
 			// temp value
@@ -64,7 +64,7 @@ class Themes {
 
 	public static function templates($theme) {
 		$templates = array();
-		$fi = new Filesystem(PATH . 'themes/' . $theme, Filesystem::SKIP_DOTS);
+		$fi = new FilesystemIterator(PATH . 'themes/' . $theme, FilesystemIterator::SKIP_DOTS);
 
 		foreach($fi as $file) {
 			$ext = pathinfo($file->getFilename(), PATHINFO_EXTENSION);

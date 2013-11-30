@@ -10,7 +10,8 @@
 
 			<?php echo Form::text('title', Input::previous('title', $page->title), array(
 				'placeholder' => __('pages.title'),
-				'autocomplete'=> 'off'
+				'autocomplete'=> 'off',
+				'autofocus' => 'true'
 			)); ?>
 
 			<aside class="buttons">
@@ -43,11 +44,12 @@
 			<?php echo Form::textarea('content', Input::previous('content', $page->content), array(
 				'placeholder' => __('pages.content_explain')
 			)); ?>
+
+			<?php echo $editor; ?>
 		</div>
 	</fieldset>
 
-	<?php echo $editor; ?>
-	<fieldset class="meta split" id="meta">
+	<fieldset class="meta split">
 		<div class="wrap">
 			<p>
 				<label><?php echo __('pages.show_in_menu'); ?>:</label>
@@ -74,10 +76,10 @@
 				<?php echo Form::select('parent', $pages, Input::previous('parent', $page->parent)); ?>
 				<em><?php echo __('pages.parent_explain'); ?></em>
 			</p>
-			<?php foreach($fields as $itm): $field = $itm->type($page->id); ?>
+			<?php foreach($fields as $field): ?>
 			<p>
 				<label for="extend_<?php echo $field->key; ?>"><?php echo $field->label; ?>:</label>
-				<?php echo $field->html(); ?>
+				<?php echo Extend::html($field); ?>
 			</p>
 			<?php endforeach; ?>
 		</div>
@@ -85,10 +87,9 @@
 </form>
 
 <script src="<?php echo asset('anchor/views/assets/js/slug.js'); ?>"></script>
-<script src="<?php echo asset('anchor/views/assets/js/dragdrop.js'); ?>"></script>
 <script src="<?php echo asset('anchor/views/assets/js/redirect.js'); ?>"></script>
+<!--<script src="<?php echo asset('anchor/views/assets/js/focus-mode.js'); ?>"></script>-->
 <script src="<?php echo asset('anchor/views/assets/js/upload-fields.js'); ?>"></script>
-<script src="<?php echo asset('anchor/views/assets/js/text-resize.js'); ?>"></script>
 <script src="<?php echo asset('anchor/views/assets/js/editor.js'); ?>"></script>
 <script>
 	$('textarea[name=content]').editor();

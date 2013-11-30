@@ -6,33 +6,41 @@ class Anchor {
 		// check installation and show intro
 		static::installation();
 
-		// load meta data from the database to the config
+		// rename config files
+		if(is_writable($src = APP . 'config/application.php')) {
+			@rename($src, APP . 'config/app.php');
+		}
+
+		if(is_writable($src = APP . 'config/database.php')) {
+			@rename($src, APP . 'config/db.php');
+		}
+
+		// load meta data from the db to the config
 		static::meta();
 
 		// import theming functions
 		static::functions();
 
-		// populate registry with globals
-		static::register();
-
-		// check migrations are up to date
+		// check mirgrations are up to date
 		static::migrations();
 
-		// load plugins
-		static::plugins();
+		// populate registry with globals
+		static::register();
 	}
 
 	public static function installation() {
 		if( ! is_installed()) {
-			echo View::create('intro')->render();
+			echo View::create('intro')->yields();
 
 			exit(0);
 		}
 	}
 
 	public static function meta() {
+		$table = Base::table('meta');
+
 		// load database metadata
-		foreach(Query::table('meta')->get() as $item) {
+		foreach(Query::table($table)->get() as $item) {
 			$meta[$item->key] = $item->value;
 		}
 
@@ -41,7 +49,7 @@ class Anchor {
 
 	public static function functions() {
 		if( ! is_admin()) {
-			$fi = new Filesystem(APP . 'functions', Filesystem::SKIP_DOTS);
+			$fi = new FilesystemIterator(APP . 'functions', FilesystemIterator::SKIP_DOTS);
 
 			foreach($fi as $file) {
 				if($file->isFile() and $file->isReadable() and '.' . $file->getExtension() == EXT) {
@@ -57,9 +65,11 @@ class Anchor {
 	}
 
 	public static function register() {
-		Registry::set(array(
-			'home_page' => Page::home(),
-			'posts_page' => Page::posts()));
+		// register home page
+		Registry::set('home_page', Page::home());
+
+		// register posts page
+		Registry::set('posts_page', Page::posts());
 
 		if( ! is_admin()) {
 			// register categories
@@ -77,53 +87,30 @@ class Anchor {
 
 			$pages = new Items($pages);
 
-			Registry::set(array(
-				'menu' => $pages,
-				'total_menu_items' => $pages->length()));
+			Registry::set('menu', $pages);
+			Registry::set('total_menu_items', $pages->length());
 		}
 	}
 
 	public static function migrations() {
 		$current = Config::meta('current_migration');
 		$migrate_to = Config::migrations('current');
+
 		$migrations = new Migrations($current);
-		$query = Query::table('meta');
+		$table = Base::table('meta');
 
 		if(is_null($current)) {
 			$number = $migrations->up($migrate_to);
 
-			$query->insert(array(
+			Query::table($table)->insert(array(
 				'key' => 'current_migration',
 				'value' => $number
 			));
 		}
 		else if($current < $migrate_to) {
 			$number = $migrations->up($migrate_to);
-			$query->where('key', '=', 'current_migration')->update(array('value' => $number));
+			Query::table($table)->where('key', '=', 'current_migration')->update(array('value' => $number));
 		}
-	}
-
-	public static function plugins() {
-		$active = Plugin::installed();
-
-		foreach($active as $item) {
-			if($plugin = $item->instance()) {
-				$plugin->apply_routes()
-					->apply_protected_routes()
-					->apply_filters()
-					->include_functions();
-
-				unset($plugin);
-			}
-		}
-
-		unset($active);
-	}
-
-	public static function page_not_found() {
-		$template = new Template('404');
-
-		return Response::create($template->render(), 404);
 	}
 
 }

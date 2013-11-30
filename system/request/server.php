@@ -20,15 +20,6 @@ class Server {
 	private $data;
 
 	/**
-	 * Server static object constructor
-	 *
-	 * @param object
-	 */
-	public static function create() {
-		return new static($_SERVER);
-	}
-
-	/**
 	 * Server object constructor
 	 *
 	 * @param array

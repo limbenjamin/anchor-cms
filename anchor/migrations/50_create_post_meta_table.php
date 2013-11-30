@@ -1,9 +1,9 @@
 <?php
 
-class Migration_create_post_meta_table extends Migrations\Migration {
+class Migration_create_post_meta_table extends Migration {
 
 	public function up() {
-		$table = $this->prefix('post_meta');
+		$table = Base::table('post_meta');
 
 		if( ! $this->has_table($table)) {
 			$sql = "CREATE TABLE IF NOT EXISTS `' . $table . '` (

@@ -27,13 +27,6 @@ class Autoloader {
 	public static $aliases = array();
 
 	/**
-	 * Regitsre the autoloader onto the spl autoload stack
-	 */
-	public static function register() {
-		spl_autoload_register(array(__CLASS__, 'load'));
-	}
-
-	/**
 	 * Append a path to the array of directories to search
 	 *
 	 * @param string
@@ -42,9 +35,7 @@ class Autoloader {
 		if( ! is_array($paths)) $paths = array($paths);
 
 		foreach($paths as $path) {
-			// using realpath() to prevent nullbyte dirs
-			// @see http://php.net/manual/en/security.filesystem.nullbytes.php
-			static::$directories[] = rtrim(realpath($path), DS) . DS;
+			static::$directories[] = rtrim($path, DS) . DS;
 		}
 	}
 
@@ -58,7 +49,6 @@ class Autoloader {
 		$file = str_replace(array('\\', '_'), DS, ltrim($class, '\\'));
 		$lower = strtolower($file);
 
-		// find a match after converting indexes and class name to lower case
 		if(array_key_exists(strtolower($class), array_change_key_case(static::$aliases))) {
 			return class_alias(static::$aliases[$class], $class);
 		}

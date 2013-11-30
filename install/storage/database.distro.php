@@ -2,6 +2,7 @@
 
 return array(
 	'default' => 'mysql',
+	'prefix' => '{{prefix}}',
 	'connections' => array(
 		'mysql' => array(
 			'driver' => 'mysql',
@@ -10,7 +11,6 @@ return array(
 			'username' => '{{username}}',
 			'password' => '{{password}}',
 			'database' => '{{database}}',
-			'prefix' => '{{prefix}}',
 			'charset' => 'utf8'
 		)
 	)

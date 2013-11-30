@@ -10,7 +10,8 @@
 
 			<?php echo Form::text('title', Input::previous('title'), array(
 				'placeholder' => __('posts.title'),
-				'autocomplete'=> 'off'
+				'autocomplete'=> 'off',
+				'autofocus' => 'true'
 			)); ?>
 
 			<aside class="buttons">
@@ -27,17 +28,13 @@
 			<?php echo Form::textarea('html', Input::previous('html'), array(
 				'placeholder' => __('posts.content_explain')
 			)); ?>
+
+			<?php echo $editor; ?>
 		</div>
 	</fieldset>
 
-	<?php echo $editor; ?>
-	<fieldset class="meta split" id="meta">
+	<fieldset class="meta split">
 		<div class="wrap">
-			<p>
-				<label><?php echo __('posts.date'); ?>:</label>
-				<?php echo Form::text('created', Input::previous('created', Date::format('now', 'Y-m-d H:i:s'))); ?>
-				<em><?php echo __('posts.date_explain'); ?></em>
-			</p>
 			<p>
 				<label><?php echo __('posts.slug'); ?>:</label>
 				<?php echo Form::text('slug', Input::previous('slug')); ?>
@@ -73,10 +70,10 @@
 				<?php echo Form::textarea('js', Input::previous('js')); ?>
 				<em><?php echo __('posts.custom_js_explain'); ?></em>
 			</p>
-			<?php foreach($fields as $itm): $field = $itm->type(); ?>
+			<?php foreach($fields as $field): ?>
 			<p>
 				<label for="extend_<?php echo $field->key; ?>"><?php echo $field->label; ?>:</label>
-				<?php echo $field->html(); ?>
+				<?php echo Extend::html($field); ?>
 			</p>
 			<?php endforeach; ?>
 		</div>
@@ -85,6 +82,7 @@
 
 <script src="<?php echo asset('anchor/views/assets/js/slug.js'); ?>"></script>
 <script src="<?php echo asset('anchor/views/assets/js/dragdrop.js'); ?>"></script>
+<!--<script src="<?php echo asset('anchor/views/assets/js/focus-mode.js'); ?>"></script>-->
 <script src="<?php echo asset('anchor/views/assets/js/upload-fields.js'); ?>"></script>
 <script src="<?php echo asset('anchor/views/assets/js/text-resize.js'); ?>"></script>
 <script src="<?php echo asset('anchor/views/assets/js/editor.js'); ?>"></script>

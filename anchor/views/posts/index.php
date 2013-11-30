@@ -1,7 +1,30 @@
 <?php echo $header; ?>
 
-<aside class="items">
-<?php if($posts->count): ?>
+<hgroup class="wrap">
+	<h1><?php echo __('posts.posts'); ?></h1>
+
+	<?php if($posts->count): ?>
+	<nav>
+		<?php echo Html::link('admin/posts/add', __('posts.create_post'), array('class' => 'btn')); ?>
+	</nav>
+	<?php endif; ?>
+</hgroup>
+
+<section class="wrap">
+	<?php echo $messages; ?>
+
+	<nav class="sidebar">
+		<?php echo Html::link('admin/posts', __('global.all'), array(
+			'class' => isset($category) ? '' : 'active'
+		)); ?>
+	    <?php foreach($categories as $cat): ?>
+		<?php echo Html::link('admin/posts/category/' . $cat->slug, $cat->title, array(
+			'class' => (isset($category) and $category->id == $cat->id) ? 'active' : ''
+		)); ?>
+	    <?php endforeach; ?>
+	</nav>
+
+	<?php if($posts->count): ?>
 	<ul class="main list">
 		<?php foreach($posts->results as $article): ?>
 		<li>
@@ -32,31 +55,6 @@
 	</p>
 
 	<?php endif; ?>
-</aside>
-
-<hgroup class="wrap">
-	<h1><?php echo __('posts.posts'); ?></h1>
-
-	<?php if($posts->count): ?>
-	<nav>
-		<?php echo Html::link('admin/posts/add', __('posts.create_post'), array('class' => 'btn')); ?>
-	</nav>
-	<?php endif; ?>
-</hgroup>
-
-<section class="wrap">
-	<?php echo $messages; ?>
-
-	<nav class="sidebar">
-		<?php echo Html::link('admin/posts', __('global.all'), array(
-			'class' => isset($category) ? '' : 'active'
-		)); ?>
-	    <?php foreach($categories as $cat): ?>
-		<?php echo Html::link('admin/posts/category/' . $cat->slug, $cat->title, array(
-			'class' => (isset($category) and $category->id == $cat->id) ? 'active' : ''
-		)); ?>
-	    <?php endforeach; ?>
-	</nav>
 </section>
 
 <?php echo $footer; ?>

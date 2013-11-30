@@ -51,16 +51,16 @@ class Uri {
 		if(strpos($uri, '://')) return $uri;
 
 		// create a server object from global
-		$server = Server::create();
+		$server = new Server($_SERVER);
 
 		if( ! is_null($secure)) {
 			$scheme = $secure ? 'https://' : 'http://';
 		}
 		else {
-			$scheme = $server->has('HTTPS') ? 'https://' : 'http://';
+			$scheme = ($server->has('HTTPS') and $server->get('HTTPS')) !== '' ? 'http://' : 'https://';
 		}
 
-		return $scheme . $server->get('HTTP_HOST', 'localhost') . static::to($uri);
+		return $scheme . $server->get('HTTP_HOST') . static::to($uri);
 	}
 
 	/**
@@ -89,19 +89,29 @@ class Uri {
 	 *
 	 * @return string
 	 */
-	private static function detect() {
-		// create a server object from global vars
-		$server = Server::create();
+	public static function detect() {
+		// create a server object from global
+		$server = new Server($_SERVER);
 
-		// make sure the server var exists and is not empty
-		if($server->has('REQUEST_URI') and $uri = $server->get('REQUEST_URI')) {
-			// make sure the uri is not malformed and return the pathname
-			if($uri = parse_url($uri, PHP_URL_PATH)) {
-				return static::format($uri, $server);
+		$try = array('REQUEST_URI', 'PATH_INFO', 'ORIG_PATH_INFO');
+
+		foreach($try as $method) {
+
+			// make sure the server var exists and is not empty
+			if($server->has($method) and $uri = $server->get($method)) {
+
+				// apply a string filter and make sure we still have somthing left
+				if($uri = filter_var($uri, FILTER_SANITIZE_URL)) {
+
+					// make sure the uri is not malformed and return the pathname
+					if($uri = parse_url($uri, PHP_URL_PATH)) {
+						return static::format($uri, $server);
+					}
+
+					// woah jackie, we found a bad'n
+					throw new ErrorException('Malformed URI');
+				}
 			}
-
-			// woah jackie, we found a bad'n
-			throw new ErrorException('Malformed URI');
 		}
 
 		throw new OverflowException('Uri was not detected. Make sure the REQUEST_URI is set.');
@@ -114,7 +124,7 @@ class Uri {
 	 * @param string
 	 * @return string
 	 */
-	private static function format($uri, $server) {
+	public static function format($uri, $server) {
 		// Remove all characters except letters,
 		// digits and $-_.+!*'(),{}|\\^~[]`<>#%";/?:@&=.
 		$uri = filter_var(rawurldecode($uri), FILTER_SANITIZE_URL);
@@ -137,7 +147,7 @@ class Uri {
 	 * @param string
 	 * @return string
 	 */
-	private static function remove($value, $uri) {
+	public static function remove($value, $uri) {
 		// make sure our search value is a non-empty string
 		if(is_string($value) and strlen($value)) {
 			// if the search value is at the start sub it out
@@ -155,7 +165,7 @@ class Uri {
 	 * @param string
 	 * @return string
 	 */
-	private static function remove_script_name($uri, $server) {
+	public static function remove_script_name($uri, $server) {
 		return static::remove($server->get('SCRIPT_NAME'), $uri);
 	}
 
@@ -165,7 +175,7 @@ class Uri {
 	 * @param string
 	 * @return string
 	 */
-	private static function remove_relative_uri($uri) {
+	public static function remove_relative_uri($uri) {
 		// remove base url
 		if($base = Config::app('url')) {
 			$uri = static::remove(rtrim($base, '/'), $uri);

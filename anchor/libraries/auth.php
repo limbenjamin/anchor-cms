@@ -15,12 +15,9 @@ class Auth {
 	}
 
 	public static function attempt($username, $password) {
-		$query = User::where('username', '=', $username)
-			->where('status', '=', 'active');
-
-		if($user = $query->fetch()) {
+		if($user = User::where('username', '=', $username)->where('status', '=', 'active')->fetch()) {
 			// found a valid user now check the password
-			if(password_verify($password, $user->password)) {
+			if(Hash::check($password, $user->password)) {
 				// store user ID in the session
 				Session::put(static::$session, $user->id);
 

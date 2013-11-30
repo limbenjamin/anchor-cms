@@ -10,14 +10,12 @@ date_default_timezone_set(Config::app('timezone', 'UTC'));
  */
 switch(constant('ENV')) {
 	case 'dev':
-		ini_set('display_error', true);
+		ini_set('display_errors', true);
 		error_reporting(-1);
 		break;
 
 	default:
-		ini_set('display_error', false);
 		error_reporting(E_ERROR | E_WARNING | E_PARSE | E_NOTICE);
-		break;
 }
 
 /*
@@ -27,31 +25,6 @@ Autoloader::directory(array(
 	APP . 'models',
 	APP . 'libraries'
 ));
-
-/**
- * Handle errors when detailed reporting is disabled
- */
-Error::callback(function() {
-	// try and clear any previous output
-	ob_get_level() and ob_end_clean();
-
-	Response::error(500, View::create('error/500')->render())->send();
-});
-
-/*
- * Set application locale
- */
-i18n\Locale::setDefault(Config::app('language', 'en_GB'));
-
-/**
- * Register composer autoloader
- */
-file_exists($composer = APP . 'vendor/autoload' . EXT) and require $composer;
-
-/**
- * Password compat
- */
-require APP . 'libraries/password' . EXT;
 
 /**
  * Helpers
@@ -74,7 +47,6 @@ if(is_admin()) {
 	require APP . 'routes/menu' . EXT;
 	require APP . 'routes/metadata' . EXT;
 	require APP . 'routes/pages' . EXT;
-	require APP . 'routes/themes' . EXT;
 	require APP . 'routes/plugins' . EXT;
 	require APP . 'routes/posts' . EXT;
 	require APP . 'routes/users' . EXT;

@@ -1,15 +1,16 @@
 <?php
 
-Route::collection(array('before' => 'auth,csrf'), function() {
+Route::collection(array('before' => 'auth'), function() {
 
 	/*
 		List all posts and paginate through them
 	*/
 	Route::get(array('admin/posts', 'admin/posts/(:num)'), function($page = 1) {
-		$perpage = Config::meta('admin_posts_per_page');
+		$perpage = Config::meta('posts_per_page');
 		$total = Post::count();
 		$posts = Post::sort('created', 'desc')->take($perpage)->skip(($page - 1) * $perpage)->get();
 		$url = Uri::to('admin/posts');
+
 		$pagination = new Paginator($posts, $total, $page, $perpage, $url);
 
 		$vars['messages'] = Notify::read();
@@ -78,9 +79,32 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 	});
 
 	Route::post('admin/posts/edit/(:num)', function($id) {
-		$input = Post::input();
+		$input = Input::get(array('title', 'slug', 'description', 'created',
+			'html', 'css', 'js', 'category', 'status', 'comments'));
 
-		if($errors = Post::validate($input, $id)) {
+		// if there is no slug try and create one from the title
+		if(empty($input['slug'])) {
+			$input['slug'] = $input['title'];
+		}
+
+		// convert to ascii
+		$input['slug'] = slug($input['slug']);
+
+		$validator = new Validator($input);
+
+		$validator->add('duplicate', function($str) use($id) {
+			return Post::where('slug', '=', $str)->where('id', '<>', $id)->count() == 0;
+		});
+
+		$validator->check('title')
+			->is_max(3, __('posts.title_missing'));
+
+		$validator->check('slug')
+			->is_max(3, __('posts.slug_missing'))
+			->is_duplicate(__('posts.slug_duplicate'))
+			->not_regex('#^[0-9_-]+$#', __('posts.slug_invalid'));
+
+		if($errors = $validator->errors()) {
 			Input::flash();
 
 			Notify::error($errors);
@@ -88,7 +112,24 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 			return Response::redirect('admin/posts/edit/' . $id);
 		}
 
+		if($input['created']) {
+			$input['created'] = Date::mysql($input['created']);
+		}
+		else {
+			unset($input['created']);
+		}
+
+		if(is_null($input['comments'])) {
+			$input['comments'] = 0;
+		}
+
+		if(empty($input['html'])) {
+			$input['status'] = 'draft';
+		}
+
 		Post::update($id, $input);
+
+		Extend::process('post', $id);
 
 		Notify::success(__('posts.updated'));
 
@@ -121,9 +162,32 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 	});
 
 	Route::post('admin/posts/add', function() {
-		$input = Post::input();
+		$input = Input::get(array('title', 'slug', 'description', 'created',
+			'html', 'css', 'js', 'category', 'status', 'comments'));
 
-		if($errors = $errors = Post::validate($input)) {
+		// if there is no slug try and create one from the title
+		if(empty($input['slug'])) {
+			$input['slug'] = $input['title'];
+		}
+
+		// convert to ascii
+		$input['slug'] = slug($input['slug']);
+
+		$validator = new Validator($input);
+
+		$validator->add('duplicate', function($str) {
+			return Post::where('slug', '=', $str)->count() == 0;
+		});
+
+		$validator->check('title')
+			->is_max(3, __('posts.title_missing'));
+
+		$validator->check('slug')
+			->is_max(3, __('posts.slug_missing'))
+			->is_duplicate(__('posts.slug_duplicate'))
+			->not_regex('#^[0-9_-]+$#', __('posts.slug_invalid'));
+
+		if($errors = $validator->errors()) {
 			Input::flash();
 
 			Notify::error($errors);
@@ -131,7 +195,25 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 			return Response::redirect('admin/posts/add');
 		}
 
-		Post::create($input);
+		if(empty($input['created'])) {
+			$input['created'] = Date::mysql('now');
+		}
+
+		$user = Auth::user();
+
+		$input['author'] = $user->id;
+
+		if(is_null($input['comments'])) {
+			$input['comments'] = 0;
+		}
+
+		if(empty($input['html'])) {
+			$input['status'] = 'draft';
+		}
+
+		$post = Post::create($input);
+
+		Extend::process('post', $post->id);
 
 		Notify::success(__('posts.created'));
 
@@ -144,9 +226,9 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 	Route::post('admin/posts/preview', function() {
 		$html = Input::get('html');
 
-		$output = Json::encode(array(
-			'html' => Markdown::defaultTransform($html)
-		));
+		// apply markdown processing
+		$md = new Markdown;
+		$output = Json::encode(array('html' => $md->transform($html)));
 
 		return Response::create($output, 200, array('content-type' => 'application/json'));
 	});
@@ -155,25 +237,15 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 		Delete post
 	*/
 	Route::get('admin/posts/delete/(:num)', function($id) {
-		if($post = Post::find($id)) {
-			$post->delete();
-			Notify::success(__('posts.deleted'));
-		}
+		Post::find($id)->delete();
+
+		Comment::where('post', '=', $id)->delete();
+
+		Query::table(Base::table('post_meta'))->where('post', '=', $id)->delete();
+
+		Notify::success(__('posts.deleted'));
 
 		return Response::redirect('admin/posts');
-	});
-
-	/*
-		Upload a image
-	*/
-	Route::post('admin/posts/upload', function() {
-		$uploader = new Uploader(PATH . 'content', array('png', 'jpg', 'bmp', 'gif'));
-		$filepath = $uploader->upload($_FILES['file']);
-
-		$uri = Config::app('url', '/') . 'content/' . basename($filepath);
-		$output = array('uri' => $uri);
-
-		return Response::json($output);
 	});
 
 });

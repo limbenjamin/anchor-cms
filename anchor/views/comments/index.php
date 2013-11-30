@@ -9,8 +9,9 @@
 
 	<nav class="sidebar statuses">
 		<?php foreach($statuses as $data): extract($data); ?>
-		<?php $class .= ($status == $url) ? ' active' : ''; ?>
-		<?php echo Html::link('admin/comments/' . $url, '<span class="icon"></span> ' . __($lang), array('class' => $class)); ?>
+		<?php echo Html::link('admin/comments/' . $url, '<span class="icon"></span> ' . __($lang), array(
+			'class' => $class . (isset($status) and $status == $url ? ' active' : '')
+		)); ?>
 		<?php endforeach; ?>
 	</nav>
 
@@ -19,8 +20,7 @@
 		<?php foreach($comments->results as $comment): ?>
 		<li>
 			<a href="<?php echo Uri::to('admin/comments/edit/' . $comment->id); ?>">
-				<strong><?php echo $comment->article()->title; ?></strong>
-				<em><?php echo strip_tags($comment->text); ?></em><br>
+				<strong><?php echo strip_tags($comment->text); ?></strong>
 				<span><time><?php echo Date::format($comment->date); ?></time></span>
 				<span class="highlight"><?php echo $comment->status; ?></span>
 			</a>

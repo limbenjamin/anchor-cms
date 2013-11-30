@@ -1,4 +1,4 @@
-<?php namespace System;
+<?php
 
 /**
  * Nano
@@ -13,8 +13,8 @@
 /**
  * Check php version
  */
-if(version_compare(PHP_VERSION, '5.3') < 0) {
-	echo 'We need PHP 5.3 or higher, you are running ' . PHP_VERSION;
+if(version_compare(PHP_VERSION, '5.3.6') < 0) {
+	echo 'We need PHP 5.3.6 or higher, you are running ' . PHP_VERSION;
 	exit;
 }
 
@@ -58,19 +58,18 @@ require PATH . 'system/autoloader' . EXT;
 /**
  * Register the autoloader
  */
-Autoloader::register();
+spl_autoload_register(array('System\\Autoloader', 'load'));
 
 // set the base path to search
-Autoloader::directory(PATH);
+System\Autoloader::directory(PATH);
 
 // map application aliases to autoloader so we dont
 // have to fully specify the class namespaces each time.
-Autoloader::$aliases = Config::get('aliases', array());
+System\Autoloader::$aliases = (array) System\Config::aliases();
 
 /**
  * Error handling
  */
-Error::setup(function($error) {
-	$error->logger(Config::error('log'));
-	$error->register();
-});
+set_exception_handler(array('System\\Error', 'exception'));
+set_error_handler(array('System\\Error', 'native'));
+register_shutdown_function(array('System\\Error', 'shutdown'));

@@ -15,7 +15,7 @@
 			<p>
 				<label for="username">Username</label>
 				<i>You use this to log in.</i>
-				<input tabindex="1" id="username" name="username" value="<?php echo Input::previous('username', 'admin'); ?>" autofocus>
+				<input tabindex="1" id="username" name="username" value="<?php echo Input::previous('username', 'admin'); ?>">
 			</p>
 
 			<p>

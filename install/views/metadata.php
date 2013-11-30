@@ -15,7 +15,7 @@
 				<label for="site_name">Site Name</label>
 				<i>What’s your blog called?.</i>
 
-				<input id="site_name" name="site_name" value="<?php echo Input::previous('site_name', 'My First Anchor Blog'); ?>" autofocus>
+				<input id="site_name" name="site_name" value="<?php echo Input::previous('site_name', 'My First Anchor Blog'); ?>">
 			</p>
 
 			<p>
@@ -50,21 +50,21 @@
 				<label for="rewrite">Clean Urls</label>
 				<i>Url rewiting</i>
 
-			<?php if($support->has_mod_rewrite()): ?>
+			<?php if(mod_rewrite()): ?>
 
 				<div class="more">Looks like you are running apache with <code>mod_rewrite</code> enabled.<br>
 				The installer will create the htaccess for you.</div>
 
-			<?php elseif($support->is_apache()): ?>
+			<?php elseif(is_apache()): ?>
 
 				<div class="more">Looks like you are running apache, but <code>mod_rewrite</code> is not enabled.</div>
 
 				<div class="more"><input id="rewrite" name="rewrite" type="checkbox" value="1">
 				Create the htaccess file for me anyway.</div>
 
-			<?php elseif($support->is_cgi()): ?>
+			<?php elseif(is_cgi()): ?>
 
-				<div class="more">Looks like you are running <code>PHP</code> as a fastcgi process (<?php echo PHP_SAPI; ?>).<br>
+				<div class="more">Looks like you are running <code>PHP</code> as a fastcgi process.<br>
 				You will have to setup your own url rewriting.</div>
 
 			<?php endif; ?>

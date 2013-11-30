@@ -5,14 +5,14 @@ class Braces {
 	public static function compile($path, $vars = array()) {
 		$braces = new static($path);
 
-		return $braces->render($vars);
+		return $braces->yields($vars);
 	}
 
 	public function __construct($path) {
 		$this->path = $path;
 	}
 
-	public function render($vars = array()) {
+	public function yields($vars = array()) {
 		$content = file_get_contents($this->path);
 
 		$keys = array_map(array($this, 'key'), array_keys($vars));

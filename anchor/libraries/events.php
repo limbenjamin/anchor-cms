@@ -1,12 +1,5 @@
 <?php
 
-/**
- * DEPRECIATED
- * Replaced by plugins
- *
- * This shit has got to go!
- */
-
 class Events {
 
 	private static $stack = array();

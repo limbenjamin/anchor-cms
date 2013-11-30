@@ -8,7 +8,7 @@
 		var defaults = {};
 
 		var settings = $.extend({}, defaults, options);
-		var textarea = $(this), container = $('.editor');
+		var textarea = $(this), container = textarea.parent();
 
 		var insert = function(str) {
 			var element = textarea[0];
@@ -133,17 +133,7 @@
 				element.value = value.substring(0, start) + "\n" + selections.join("\n") + "\n" + value.substring(end);
 			},
 			quote: function() {
-				var element = textarea[0];
-				var start = element.selectionStart, end = element.selectionEnd;
-				var value = element.value;
-
-				var selections = value.substring(start, end).split("\n");
-
-				for(var i = 0; i < selections.length; i++) {
-					selections[i] = '> ' + selections[i];
-				}
-
-				element.value = value.substring(0, start) + selections.join("\n") + value.substring(end);
+				wrap('<codes>', '</codes>');
 			}
 		};
 
@@ -162,8 +152,7 @@
 		});
 
 		container.on('click', 'nav a', function(event) {
-			var a = $(event.target),
-				method = a.attr('href').split('#').pop();
+			var a = $(event.target), method = a.attr('href').split('#').pop();
 
 			if(controls[method]) controls[method]();
 

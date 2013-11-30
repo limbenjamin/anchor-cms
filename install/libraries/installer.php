@@ -2,47 +2,60 @@
 
 class Installer {
 
-	private $connection, $session, $config;
+	// database connection
+	public static $connection;
 
-	public function __construct() {
-		$this->session = Session::get('install');
-		$this->support = new Support;
-		$this->connection = $this->connect();
-		$this->config = new Installer\Config($this->session, $this->support);
+	/*
+		Install
+	*/
+
+	public static function run() {
+		// session data
+		$settings = Session::get('install');
+
+		// create database connection
+		static::connect($settings);
+
+		// install tables
+		static::schema($settings);
+
+		// insert metadata
+		static::metadata($settings);
+
+		// create user account
+		static::account($settings);
+
+		// write database config
+		static::database($settings);
+
+		// write application config
+		static::application($settings);
+
+		// write session config
+		static::session($settings);
+
+		// install htaccess file
+		static::rewrite($settings);
 	}
 
-	public function run() {
-		// install database schema
-		$this->schema();
+	private static function connect($settings) {
+		$database = $settings['database'];
 
-		// write config files
-		$this->config->write('app');
-		$this->config->write('db');
-
-		// install database data
-		$this->data();
-
-		// create apache rewrite file if the user requested it
-		if($this->session['metadata']['rewrite']) $this->rewrite();
-	}
-
-	private function connect() {
-		extract($this->session['database']);
-
-		return DB::factory(array(
+		$config = array(
 			'driver' => 'mysql',
-			'database' => $name,
-			'hostname' => $host,
-			'port' => $port,
-			'username' => $user,
-			'password' => $pass,
-			'charset' => 'utf8',
-			'prefix' => $prefix
-		));
+			'database' => $database['name'],
+			'hostname' => $database['host'],
+			'port' => $database['port'],
+			'username' => $database['user'],
+			'password' => $database['pass'],
+			'charset' => 'utf8'
+		);
+
+		static::$connection = DB::factory($config);
 	}
 
-	private function schema() {
-		$database = $this->session['database'];
+	private static function schema($settings) {
+		$database = $settings['database'];
 
 		$sql = Braces::compile(APP . 'storage/anchor.sql', array(
 			'now' => gmdate('Y-m-d H:i:s'),
@@ -50,176 +63,91 @@ class Installer {
 			'prefix' => $database['prefix']
 		));
 
-		$this->connection->instance()->exec($sql);
+		static::$connection->instance()->query($sql);
 	}
 
-	private function data() {
-		$this->metadata();
-		$this->categories();
-		$this->pages();
-		$this->posts();
-		$this->user();
-	}
+	private static function metadata($settings) {
+		$metadata = $settings['metadata'];
+		$database = $settings['database'];
 
-	private function metadata() {
-		$metadata = $this->session['metadata'];
-
-		// insert basic meta data
-		$meta = array(
-			'auto_published_comments' => 0,
-			'comment_moderation_keys' => '',
-			'comment_notifications' => 0,
-			'date_format' => 'jS M, Y',
-			'home_page' => '1',
-			'posts_page' => '1',
-			'posts_per_page' => '10',
-			'admin_posts_per_page' => '6',
-
+		$config = array(
 			'sitename' => $metadata['site_name'],
 			'description' => $metadata['site_description'],
 			'theme' => $metadata['theme']
 		);
 
-		foreach($meta as $key => $value) {
-			$query = Query::table('meta', $this->connection)->where('key', '=', $key);
+		$query = Query::table($database['prefix'] . 'meta', static::$connection);
 
-			if($query->count() == 0) {
-				$query->insert(compact('key', 'value'));
-			}
+		foreach($config as $key => $value) {
+			$query->insert(array('key' => $key, 'value' => $value));
 		}
 	}
 
-	private function categories() {
-		$query = Query::table('categories', $this->connection);
+	private static function account($settings) {
+		$account = $settings['account'];
+		$database = $settings['database'];
 
-		if($query->count() == 0) {
-			$query->insert(array(
-				'title' => 'Uncategorised',
-				'slug' => 'uncategorised',
-				'description' => 'Ain\'t no category here.'
-			));
-		}
+		$query = Query::table($database['prefix'] . 'users', static::$connection);
 
-		// create the first page
-		$query = Query::table('pages', $this->connection);
-
-		if($query->count() == 0) {
-			$query->insert(array(
-				'slug' => 'posts',
-				'name' => 'Posts',
-				'title' => 'My posts and thoughts',
-				'content' => 'Welcome!',
-				'status' => 'published',
-				'redirect' => '',
-				'show_in_menu' => 1,
-				'menu_order' => 0
-			));
-		}
-
-		// create the first post
-		$query = Query::table('posts', $this->connection);
-
-		if($query->count() == 0) {
-			$query->insert(array(
-				'title' => 'Hello World',
-				'slug' => 'hello-world',
-				'description' => 'This is the first post.',
-				'html' => 'Hello World!\r\n\r\nThis is the first post.',
-				'css' => '',
-				'js' => '',
-				'created' => gmdate('Y-m-d H:i:s'),
-				'author' => 1,
-				'category' => 1,
-				'status' => 'published',
-				'comments' => 0
-			));
-		}
+		$query->insert(array(
+			'username' => $account['username'],
+			'password' => Hash::make($account['password']),
+			'email' => $account['email'],
+			'real_name' => 'Administrator',
+			'bio' => 'The bouse',
+			'status' => 'active',
+			'role' => 'administrator'
+		));
 	}
 
-	private function pages() {
-		$query = Query::table('pages', $this->connection);
+	private static function database($settings) {
+		$database = $settings['database'];
 
-		if($query->count() == 0) {
-			$query->insert(array(
-				'slug' => 'posts',
-				'name' => 'Posts',
-				'title' => 'My posts and thoughts',
-				'content' => 'Welcome!',
-				'status' => 'published',
-				'redirect' => '',
-				'show_in_menu' => 1,
-				'menu_order' => 0
-			));
-		}
+		$distro = Braces::compile(APP . 'storage/database.distro.php', array(
+			'hostname' => $database['host'],
+			'port' => $database['port'],
+			'username' => $database['user'],
+			'password' => $database['pass'],
+			'database' => $database['name'],
+			'prefix' => $database['prefix']
+		));
 
-		// create the first post
-		$query = Query::table('posts', $this->connection);
-
-		if($query->count() == 0) {
-			$query->insert(array(
-				'title' => 'Hello World',
-				'slug' => 'hello-world',
-				'description' => 'This is the first post.',
-				'html' => 'Hello World!\r\n\r\nThis is the first post.',
-				'css' => '',
-				'js' => '',
-				'created' => gmdate('Y-m-d H:i:s'),
-				'author' => 1,
-				'category' => 1,
-				'status' => 'published',
-				'comments' => 0
-			));
-		}
+		file_put_contents(PATH . 'anchor/config/db.php', $distro);
 	}
 
-	private function posts() {
-		$query = Query::table('posts', $this->connection);
+	private static function application($settings) {
+		$distro = Braces::compile(APP . 'storage/application.distro.php', array(
+			'url' => $settings['metadata']['site_path'],
+			'index' => (mod_rewrite() ? '' : 'index.php'),
+			'key' => noise(),
+			'language' => $settings['i18n']['language'],
+			'timezone' => $settings['i18n']['timezone']
+		));
 
-		if($query->count() == 0) {
-			$query->insert(array(
-				'title' => 'Hello World',
-				'slug' => 'hello-world',
-				'description' => 'This is the first post.',
-				'html' => 'Hello World!\r\n\r\nThis is the first post.',
-				'css' => '',
-				'js' => '',
-				'created' => gmdate('Y-m-d H:i:s'),
-				'author' => 1,
-				'category' => 1,
-				'status' => 'published',
-				'comments' => 0
-			));
-		}
+		file_put_contents(PATH . 'anchor/config/app.php', $distro);
 	}
 
-	private function user() {
-		$query = Query::table('users', $this->connection);
+	private static function session($settings) {
+		$database = $settings['database'];
 
-		if($query->count() == 0) {
-			$query->insert(array(
-				'username' => $this->session['account']['username'],
-				'password' => password_hash($this->session['account']['password'], PASSWORD_BCRYPT),
-				'email' => $this->session['account']['email'],
-				'real_name' => 'Administrator',
-				'bio' => 'The bouse',
-				'status' => 'active',
-				'role' => 'administrator'
-			));
-		}
+		$distro = Braces::compile(APP . 'storage/session.distro.php', array(
+			'table' => $database['prefix'] . 'sessions'
+		));
+
+		file_put_contents(PATH . 'anchor/config/session.php', $distro);
 	}
 
-	private function rewrite() {
-		if($this->support->has_mod_rewrite()) {
+	private static function rewrite($settings) {
+		if(mod_rewrite() or (is_apache() and $settings['metadata']['rewrite'])) {
 			$htaccess = Braces::compile(APP . 'storage/htaccess.distro', array(
-				'base' => $this->session['metadata']['site_path'],
-				'index' => ($this->support->is_cgi() ? 'index.php?/$1' : 'index.php/$1')
+				'base' => $settings['metadata']['site_path'],
+				'index' => (is_cgi() ? 'index.php?/$1' : 'index.php/$1')
 			));
 
-			if(is_writable($filepath = PATH . '.htaccess')) {
+			if(isset($htaccess) and is_writable($filepath = PATH . '.htaccess')) {
 				file_put_contents($filepath, $htaccess);
 			}
 			else {
-				// stash htaccess file in session
 				Session::put('htaccess', $htaccess);
 			}
 		}

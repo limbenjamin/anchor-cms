@@ -20,7 +20,7 @@
 				</label>
 				<select id="lang" name="language">
 					<?php foreach($languages as $lang): ?>
-					<?php $selected = ($lang == $prefered_language) ? ' selected' : ''; ?>
+					<?php $selected = in_array($lang, $prefered_languages) ? ' selected' : ''; ?>
 					<option<?php echo $selected; ?>><?php echo $lang; ?></option>
 					<?php endforeach; ?>
 				</select>
@@ -32,9 +32,13 @@
 					<span class="info">Your current time zone.</span>
 				</label>
 				<select id="timezone" name="timezone">
-					<?php foreach($timezones as $ident): ?>
-					<?php $selected = ($ident == $prefered_timezone) ? ' selected' : ''; ?>
-					<option<?php echo $selected; ?>><?php echo $ident; ?></option>
+					<?php $set = false; ?>
+					<?php foreach($timezones as $zone): ?>
+					<?php $selected = ($set === false and $current_timezone == $zone['offset']) ? ' selected' : ''; ?>
+					<option value="<?php echo $zone['timezone_id']; ?>"<?php echo $selected; ?>>
+						<?php echo $zone['label']; ?>
+					</option>
+					<?php if($selected) $set = true; ?>
 					<?php endforeach; ?>
 				</select>
 			</p>

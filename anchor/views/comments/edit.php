@@ -1,8 +1,7 @@
 <?php echo $header; ?>
 
 <hgroup class="wrap">
-	<h1><?php echo __('comments.editing_comment'); ?>
-	<q><?php echo $comment->article()->title; ?></q></h1>
+	<h1><?php echo __('comments.editing_comment'); ?></h1>
 </hgroup>
 
 <section class="wrap">

@@ -10,27 +10,10 @@
  * @copyright	http://unlicense.org/
  */
 
-use PDO;
-use PDOException;
-use ErrorException;
 use Exception;
 use System\Config;
 
 abstract class Connector {
-
-	/**
-	 * Holds the php pdo instance
-	 *
-	 * @var object
-	 */
-	protected $pdo;
-
-	/**
-	 * Table prefix string
-	 *
-	 * @var string
-	 */
-	public $table_prefix = '';
 
 	/**
 	 * Log of all queries
@@ -40,30 +23,11 @@ abstract class Connector {
 	private $queries = array();
 
 	/**
-	 * Establish new connection
+	 * All connectors will implement a function to return the pdo instance
 	 *
-	 * @param array
+	 * @param object PDO Object
 	 */
-	public function __construct($config) {
-		try {
-			$this->pdo = $this->connect($config);
-			$this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-			if(isset($config['prefix'])) {
-				$this->table_prefix = $config['prefix'];
-			}
-		} catch(PDOException $e) {
-			throw new ErrorException($e->getMessage());
-		}
-	}
-
-	/**
-	 * Returns a new PDO instance
-	 *
-	 * @param array
-	 * @return object
-	 */
-	abstract protected function connect($config);
+	abstract public function instance();
 
 	/**
 	 * A simple database query wrapper
@@ -73,14 +37,20 @@ abstract class Connector {
 	 * @return array
 	 */
 	public function ask($sql, $binds = array()) {
-		if(Config::db('profiling')) {
-			$this->queries[] = compact('sql', 'binds');
+		try {
+			if(Config::db('profiling')) {
+				$this->queries[] = compact('sql', 'binds');
+			}
+
+			$statement = $this->instance()->prepare($sql);
+			$result = $statement->execute($binds);
+
+			return array($result, $statement);
 		}
-
-		$statement = $this->pdo->prepare($sql);
-		$result = $statement->execute($binds);
-
-		return array($result, $statement);
+		catch(Exception $e) {
+			$error = 'Database Error: ' . $e->getMessage() . '</code></p><p><code>SQL: ' . trim($sql);
+			throw new Exception($error, 0, $e);
+		}
 	}
 
 	/**
@@ -93,15 +63,6 @@ abstract class Connector {
 	}
 
 	/**
-	 * Get the PDO instance
-	 *
-	 * @return object
-	 */
-	public function instance() {
-		return $this->pdo;
-	}
-
-	/**
 	 * Magic method for calling methods on PDO instance
 	 *
 	 * @param string
@@ -109,7 +70,7 @@ abstract class Connector {
 	 * @return mixed
 	 */
 	public static function __callStatic($method, $arguments) {
-		return call_user_func_array(array($this->pdo, $method), $arguments);
+		return call_user_func_array(array($this->instance(), $method), $arguments);
 	}
 
 }

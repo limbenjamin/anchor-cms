@@ -1,6 +1,6 @@
 <?php
 
-Route::collection(array('before' => 'auth,csrf'), function() {
+Route::collection(array('before' => 'auth'), function() {
 
 	/*
 		List Pages
@@ -62,8 +62,8 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 			'archived' => __('global.archived')
 		);
 
-		// custom fields
-		$vars['fields'] = Extend::fields('page');
+		// extended fields
+		$vars['fields'] = Extend::fields('page', $id);
 
 		return View::create('pages/edit', $vars)
 			->partial('header', 'partials/header')
@@ -72,9 +72,36 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 	});
 
 	Route::post('admin/pages/edit/(:num)', function($id) {
-		$input = Page::input();
+		$input = Input::get(array('parent', 'name', 'title', 'slug', 'content', 'status', 'redirect', 'show_in_menu'));
 
-		if($errors = Page::validate($input, $id)) {
+		// if there is no slug try and create one from the title
+		if(empty($input['slug'])) {
+			$input['slug'] = $input['title'];
+		}
+
+		// convert to ascii
+		$input['slug'] = slug($input['slug']);
+
+		$validator = new Validator($input);
+
+		$validator->add('duplicate', function($str) use($id) {
+			return Page::where('slug', '=', $str)->where('id', '<>', $id)->count() == 0;
+		});
+
+		$validator->check('title')
+			->is_max(3, __('pages.title_missing'));
+
+		$validator->check('slug')
+			->is_max(3, __('pages.slug_missing'))
+			->is_duplicate(__('pages.slug_duplicate'))
+			->not_regex('#^[0-9_-]+$#', __('pages.slug_invalid'));
+
+		if($input['redirect']) {
+			$validator->check('redirect')
+				->is_url( __('pages.redirect_missing'));
+		}
+
+		if($errors = $validator->errors()) {
 			Input::flash();
 
 			Notify::error($errors);
@@ -82,7 +109,15 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 			return Response::redirect('admin/pages/edit/' . $id);
 		}
 
+		if(empty($input['name'])) {
+			$input['name'] = $input['title'];
+		}
+
+		$input['show_in_menu'] = is_null($input['show_in_menu']) ? 0 : 1;
+
 		Page::update($id, $input);
+
+		Extend::process('page', $id);
 
 		Notify::success(__('pages.updated'));
 
@@ -113,9 +148,37 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 	});
 
 	Route::post('admin/pages/add', function() {
-		$input = Page::input();
+		$input = Input::get(array('parent', 'name', 'title', 'slug', 'content',
+			'status', 'redirect', 'show_in_menu'));
 
-		if($errors = Page::validate($input)) {
+		// if there is no slug try and create one from the title
+		if(empty($input['slug'])) {
+			$input['slug'] = $input['title'];
+		}
+
+		// convert to ascii
+		$input['slug'] = slug($input['slug']);
+
+		$validator = new Validator($input);
+
+		$validator->add('duplicate', function($str) {
+			return Page::where('slug', '=', $str)->count() == 0;
+		});
+
+		$validator->check('title')
+			->is_max(3, __('pages.title_missing'));
+
+		$validator->check('slug')
+			->is_max(3, __('pages.slug_missing'))
+			->is_duplicate(__('pages.slug_duplicate'))
+			->not_regex('#^[0-9_-]+$#', __('pages.slug_invalid'));
+
+		if($input['redirect']) {
+			$validator->check('redirect')
+				->is_url(__('pages.redirect_missing'));
+		}
+
+		if($errors = $validator->errors()) {
 			Input::flash();
 
 			Notify::error($errors);
@@ -123,7 +186,15 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 			return Response::redirect('admin/pages/add');
 		}
 
-		Page::create($input);
+		if(empty($input['name'])) {
+			$input['name'] = $input['title'];
+		}
+
+		$input['show_in_menu'] = is_null($input['show_in_menu']) ? 0 : 1;
+
+		$page = Page::create($input);
+
+		Extend::process('page', $page->id);
 
 		Notify::success(__('pages.created'));
 
@@ -134,39 +205,13 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 		Delete Page
 	*/
 	Route::get('admin/pages/delete/(:num)', function($id) {
-		$page = Page::find($id);
+		Page::find($id)->delete();
 
-		// dont delete pages that are set as the posts page or home page
-		if($page->id == Config::meta('home_page')) {
-			Notify::success(__('pages.cannot_delete_home_page'));
-
-			return Response::redirect('admin/pages');
-		}
-
-		if($page->id == Config::meta('posts_page')) {
-			Notify::success(__('pages.cannot_delete_posts_page'));
-
-			return Response::redirect('admin/pages');
-		}
-
-		$page->delete();
+		Query::table(Base::table('page_meta'))->where('page', '=', $id)->delete();
 
 		Notify::success(__('pages.deleted'));
 
 		return Response::redirect('admin/pages');
-	});
-
-	/*
-		Upload a image
-	*/
-	Route::post('admin/pages/upload', function() {
-		$uploader = new Uploader(PATH . 'content', array('png', 'jpg', 'bmp', 'gif'));
-		$filepath = $uploader->upload($_FILES['file']);
-
-		$uri = Config::app('url', '/') . 'content/' . basename($filepath);
-		$output = array('uri' => $uri);
-
-		return Response::json($output);
 	});
 
 });

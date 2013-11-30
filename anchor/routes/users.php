@@ -1,6 +1,6 @@
 <?php
 
-Route::collection(array('before' => 'auth,csrf'), function() {
+Route::collection(array('before' => 'auth'), function() {
 
 	/*
 		List users
@@ -39,14 +39,41 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 	});
 
 	Route::post('admin/users/edit/(:num)', function($id) {
-		$input = User::input();
+		$input = Input::get(array('username', 'email', 'real_name', 'bio', 'status', 'role'));
+		$password_reset = false;
 
-		if($errors = User::validate($input)) {
+		if($password = Input::get('password')) {
+			$input['password'] = $password;
+			$password_reset = true;
+		}
+
+		$validator = new Validator($input);
+
+		$validator->add('safe', function($str) use($id) {
+			return ($str != 'inactive' and Auth::user()->id == $id);
+		});
+
+		$validator->check('username')
+			->is_max(2, __('users.username_missing', 2));
+
+		$validator->check('email')
+			->is_email(__('users.email_missing'));
+
+		if($password_reset) {
+			$validator->check('password')
+				->is_max(6, __('users.password_too_short', 6));
+		}
+
+		if($errors = $validator->errors()) {
 			Input::flash();
 
 			Notify::error($errors);
 
 			return Response::redirect('admin/users/edit/' . $id);
+		}
+
+		if($password_reset) {
+			$input['password'] = Hash::make($input['password']);
 		}
 
 		User::update($id, $input);
@@ -80,7 +107,7 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 	});
 
 	Route::post('admin/users/add', function() {
-		$input = User::input();
+		$input = Input::get(array('username', 'email', 'real_name', 'password', 'bio', 'status', 'role'));
 
 		$validator = new Validator($input);
 
@@ -101,7 +128,7 @@ Route::collection(array('before' => 'auth,csrf'), function() {
 			return Response::redirect('admin/users/add');
 		}
 
-		$input['password'] = password_hash($input['password'], PASSWORD_BCRYPT);
+		$input['password'] = Hash::make($input['password']);
 
 		User::create($input);
 

@@ -23,7 +23,7 @@ Route::collection(array('before' => 'auth'), function() {
 	*/
 	Route::post('admin/extend/metadata', function() {
 		$input = Input::get(array('sitename', 'description', 'home_page', 'posts_page',
-            'posts_per_page', 'admin_posts_per_page', 'auto_published_comments', 'theme', 'comment_notifications', 'comment_moderation_keys'));
+			'posts_per_page', 'auto_published_comments', 'theme', 'comment_notifications', 'comment_moderation_keys'));
 
 		$validator = new Validator($input);
 
@@ -49,7 +49,7 @@ Route::collection(array('before' => 'auth'), function() {
 		$input['description'] = htmlspecialchars($input['description'], ENT_COMPAT, Config::app('encoding'), false);
 
 		foreach($input as $key => $value) {
-			Query::table('meta')->where('key', '=', $key)->update(array('value' => $value));
+			Query::table(Base::table('meta'))->where('key', '=', $key)->update(array('value' => $value));
 		}
 
 		Notify::success(__('metadata.updated'));

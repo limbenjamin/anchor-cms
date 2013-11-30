@@ -2,8 +2,9 @@
 
 <section class="content">
 
-	<?php if(has_posts()): posts(); ?>
+	<?php if(has_posts()): ?>
 		<ul class="items">
+			<?php posts(); ?>
 			<li>
 				<article class="wrap">
 					<h1>
@@ -11,17 +12,17 @@
 					</h1>
 
 					<div class="content">
-						<?php echo article_content(); ?>
+						<?php echo article_markdown(); ?>
 					</div>
 
 					<footer>
-						Posted <time datetime="<?php echo date(DATE_W3C, article_time()); ?>">
-						<?php echo relative_time(article_time()); ?></time> by <?php echo article_author(); ?>.
+						Posted <time datetime="<?php echo date(DATE_W3C, article_time()); ?>"><?php echo relative_time(article_time()); ?></time> by <?php echo article_author('real_name'); ?>.
 					</footer>
 				</article>
 			</li>
-			<?php while(posts()): ?>
-			<li style="<?php echo calculate_background(); ?>">
+			<?php $i = 0; while(posts()): ?>
+			<?php $bg = sprintf('background: hsl(215, 28%%, %d%%);', round(((++$i / posts_per_page()) * 20) + 20)); ?>
+			<li style="<?php echo $bg; ?>">
 				<article class="wrap">
 					<h2>
 						<a href="<?php echo article_url(); ?>" title="<?php echo article_title(); ?>"><?php echo article_title(); ?></a>

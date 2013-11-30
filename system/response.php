@@ -69,8 +69,8 @@ class Response {
 	 * @param int
 	 * @return object
 	 */
-	public static function error($status, $output = '') {
-		return static::create($output, $status);
+	public static function error($status, $vars = array()) {
+		return static::create(View::create('error/' . $status, $vars)->yields(), $status);
 	}
 
 	/**
@@ -93,7 +93,7 @@ class Response {
 	 * @param array
 	 */
 	public function __construct($output, $status = 200, $headers = array()) {
-		$this->status = new Status($status);
+		$this->status = $status;
 		$this->output = $output;
 
 		foreach($headers as $name => $value) {
@@ -105,26 +105,29 @@ class Response {
 	 * Sends the final headers cookies and output
 	 */
 	public function send() {
-		// create a status header
-		$this->status->header();
+		// dont send headers for CLI
+		if( ! Request::cli()) {
+			// create a status header
+			Status::create($this->status)->header();
 
-		// always make sure we send the content type
-		if( ! array_key_exists('content-type', $this->headers)) {
-			$this->headers['content-type'] = 'text/html; charset=' . Config::app('encoding', 'UTF-8');
+			// always make sure we send the content type
+			if( ! array_key_exists('content-type', $this->headers)) {
+				$this->headers['content-type'] = 'text/html; charset=' . Config::app('encoding', 'UTF-8');
+			}
+
+			// output headers
+			foreach($this->headers as $name => $value) {
+				header($name . ': ' . $value);
+			}
+
+			// send any cookies we may have stored in the cookie class
+			foreach(Cookie::$bag as $cookie) {
+				call_user_func_array('setcookie', array_values($cookie));
+			}
 		}
 
-		// output headers
-		foreach($this->headers as $name => $value) {
-			header($name . ': ' . $value);
-		}
-
-		// send any cookies we may have stored in the cookie class
-		foreach(Cookie::$bag as $cookie) {
-			call_user_func_array('setcookie', array_values($cookie));
-		}
-
-		// output final content
-		echo $this->output;
+		// output the final content
+		if($this->output) echo $this->output;
 	}
 
 }
